@@ -1,4 +1,4 @@
-name: Import Sunfish Kernel Full History to main and sunfish_ksu_next
+name: Import Sunfish Kernel (Two Branches, Source Remote Tracking)
 
 on:
   workflow_dispatch:
@@ -14,19 +14,18 @@ jobs:
       - name: Add Sunfish kernel remote and fetch full history
         run: |
           git remote add sunfish https://android.googlesource.com/kernel/msm
-          # Fetch the full history for the desired branch
           git fetch sunfish android-msm-sunfish-4.14-android13-qpr3
 
-      - name: Reset main branch to kernel branch tip
-        run: |
-          # Checkout main and reset it to the tip of the fetched branch
-          git checkout -B main sunfish/android-msm-sunfish-4.14-android13-qpr3
-          git push --force origin main
-
-      - name: Create sunfish_ksu_next branch at specific commit
+      - name: Create sunfish_ksu_next at pinned commit
         run: |
           git checkout -b sunfish_ksu_next 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071
           git push --set-upstream origin sunfish_ksu_next
 
-      - name: Clean up
-        run: git remote remove sunfish
+      - name: Create sunfish_kernel_recent at upstream tip
+        run: |
+          git checkout -b sunfish_kernel_recent sunfish/android-msm-sunfish-4.14-android13-qpr3
+          git push --set-upstream origin sunfish_kernel_recent
+
+      # Do NOT remove the sunfish remote, so you can always fetch from it!
+      - name: Show remotes for verification
+        run: git remote -v
