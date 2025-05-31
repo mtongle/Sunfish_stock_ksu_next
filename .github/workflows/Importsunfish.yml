@@ -1,30 +1,44 @@
-name: Import Sunfish Kernel (Two Branches, Source Remote Tracking, PAT Push)
+name: Import and Merge Sunfish Kernel
 
 on:
   workflow_dispatch:
 
 jobs:
-  import-kernel-history:
+  merge-sunfish-kernel:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout your repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Add Sunfish kernel remote and fetch full history
+      - name: Set up Git identity
         run: |
-          git remote add sunfish https://android.googlesource.com/kernel/msm
-          git fetch sunfish android-msm-sunfish-4.14-android13-qpr3
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
 
-      - name: Create sunfish_ksu_next at pinned commit and push
+      - name: Clone Sunfish kernel (full history, correct branch)
         run: |
-          git checkout -b sunfish_ksu_next 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071
-          git push --set-upstream "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfish_ksu_next
+          git clone https://android.googlesource.com/kernel/msm sunfish-kernel
+          cd sunfish-kernel
+          git fetch origin android-msm-sunfish-4.14-android13-qpr3
+          git checkout android-msm-sunfish-4.14-android13-qpr3
+          cd ..
 
-      - name: Create sunfish_kernel_recent at upstream tip and push
+      - name: Add sunfish-kernel as remote and fetch
         run: |
-          git checkout -b sunfish_kernel_recent sunfish/android-msm-sunfish-4.14-android13-qpr3
-          git push --set-upstream "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfish_kernel_recent
+          git remote add sunfish-kernel ./sunfish-kernel
+          git fetch sunfish-kernel
+
+      - name: Create merge branch and merge Sunfish kernel
+        run: |
+          git checkout -b sunfish_merged
+          git merge sunfish-kernel/android-msm-sunfish-4.14-android13-qpr3 --allow-unrelated-histories -m "Merge Sunfish kernel history into repo"
+
+      - name: Push merged branch to your repo
+        run: |
+          git push "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfish_merged:sunfish_merged
 
       - name: Show remotes for verification
         run: git remote -v
