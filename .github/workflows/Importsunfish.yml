@@ -19,12 +19,12 @@ jobs:
       - name: Create sunfish_ksu_next at pinned commit
         run: |
           git checkout -b sunfish_ksu_next 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071
-          git push --set-upstream "https://${{ github.actor }}:${{ secrets.secrets }}@github.com/${{ github.repository }}.git" sunfish_ksu_next
+          git push --set-upstream "https://${{ github.actor }}:${{ secrets.SECRETS }}@github.com/${{ github.repository }}.git" sunfish_ksu_next
 
       - name: Create sunfish_kernel_recent at upstream tip
         run: |
           git checkout -b sunfish_kernel_recent sunfish/android-msm-sunfish-4.14-android13-qpr3
-          git push --set-upstream "https://${{ github.actor }}:${{ secrets.secrets }}@github.com/${{ github.repository }}.git" sunfish_kernel_recent
+          git push --set-upstream "https://${{ github.actor }}:${{ secrets.SECRETS }}@github.com/${{ github.repository }}.git" sunfish_kernel_recent
 
       - name: Show remotes for verification
         run: git remote -v
