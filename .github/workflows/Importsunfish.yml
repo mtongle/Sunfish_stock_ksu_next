@@ -17,9 +17,9 @@ jobs:
           sudo apt-get install -y git-lfs
           git lfs install
 
-      - name: Clone Sunfish kernel
+      - name: Clone Sunfish kernel from correct branch
         run: |
-          git clone https://android.googlesource.com/kernel/msm sunfish_kernel
+          git clone --branch android-msm-sunfish-4.14-android13-qpr3 https://android.googlesource.com/kernel/msm sunfish_kernel
           cd sunfish_kernel
           git checkout 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071
 
@@ -41,7 +41,7 @@ jobs:
           git config --global user.email "github-actions@github.com"
           git checkout -b sunfish_ksu_next
           git add .
-          git commit -m "Import Sunfish kernel at 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071 with LFS"
+          git commit -m "Import Sunfish kernel at 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071 from branch android-msm-sunfish-4.14-android13-qpr3 with LFS"
           git push --set-upstream origin sunfish_ksu_next
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
