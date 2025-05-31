@@ -1,0 +1,47 @@
+name: Import Sunfish Kernel at Specific Commit with LFS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  import-sunfish-kernel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Set up Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      - name: Clone Sunfish kernel
+        run: |
+          git clone https://android.googlesource.com/kernel/msm sunfish_kernel
+          cd sunfish_kernel
+          git checkout 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071
+
+      - name: Copy kernel source to repo
+        run: |
+          cp -r sunfish_kernel/. .
+
+      - name: Track kernel binaries with Git LFS
+        run: |
+          git lfs track "*.img"
+          git lfs track "*.bin"
+          git lfs track "*.gz"
+          git lfs track "*.zip"
+          git add .gitattributes
+
+      - name: Commit and push to sunfish_ksu_next branch
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git checkout -b sunfish_ksu_next
+          git add .
+          git commit -m "Import Sunfish kernel at 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071 with LFS"
+          git push --set-upstream origin sunfish_ksu_next
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
