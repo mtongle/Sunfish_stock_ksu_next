@@ -31,30 +31,26 @@ jobs:
           git remote add sunfish-kernel ./sunfish-kernel
           git fetch sunfish-kernel
 
-      - name: Create branch at latest Sunfish commit and push
-        run: |
-          git checkout --orphan sunfish_kernel_latest
-          git rm -rf .
-          git commit --allow-empty -m "Start sunfish_kernel_latest branch"
-          git pull ./sunfish-kernel ${{ env.KERNEL_LATEST_COMMIT }} --allow-unrelated-histories
-          git push "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfish_kernel_latest
-
-      - name: Create branch at provided Sunfish commit and push
-        run: |
-          git checkout --orphan sunfish_kernel_pinned
-          git rm -rf .
-          git commit --allow-empty -m "Start sunfish_kernel_pinned branch"
-          git pull ./sunfish-kernel 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071 --allow-unrelated-histories
-          git push "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfish_kernel_pinned
-
-      - name: Create merge branch and merge Sunfish kernel
+      - name: Create new branch for merge
         run: |
           git checkout -b sunfish_merged
+
+      - name: Merge Sunfish kernel (allow unrelated histories)
+        run: |
           git merge sunfish-kernel/android-msm-sunfish-4.14-android13-qpr3 --allow-unrelated-histories -m "Merge Sunfish kernel history into repo"
 
       - name: Push merged branch to your repo
         run: |
           git push "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfish_merged:sunfish_merged
+
+      - name: Create branch at specific Sunfish commit (sunfishkernel2023)
+        run: |
+          git fetch ./sunfish-kernel 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071
+          git checkout -b sunfishkernel2023 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071
+
+      - name: Push sunfishkernel2023 branch to your repo
+        run: |
+          git push "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfishkernel2023:sunfishkernel2023
 
       - name: Show remotes for verification
         run: git remote -v
