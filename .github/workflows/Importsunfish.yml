@@ -6,7 +6,6 @@ on:
 jobs:
   merge-sunfish-kernel:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout your repository
         uses: actions/checkout@v4
@@ -14,7 +13,8 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Git identity
-       global user.email "actions@github.com"
+        run: |
+          git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
 
       - name: Clone Sunfish kernel (full history, correct branch)
