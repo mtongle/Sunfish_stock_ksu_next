@@ -14,7 +14,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Git identity
-        run:github.com"
+       global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
 
       - name: Clone Sunfish kernel (full history, correct branch)
