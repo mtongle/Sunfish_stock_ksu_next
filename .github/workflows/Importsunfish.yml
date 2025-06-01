@@ -14,8 +14,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Git identity
-        run: |
-          git config --global user.email "actions@github.com"
+        run:github.com"
           git config --global user.name "GitHub Actions"
 
       - name: Clone Sunfish kernel (full history, correct branch)
@@ -25,8 +24,6 @@ jobs:
           git fetch origin android-msm-sunfish-4.14-android13-qpr3
           git checkout android-msm-sunfish-4.14-android13-qpr3
           echo "KERNEL_LATEST_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          # Use the specific commit you provided
-          echo "KERNEL_PINNED_COMMIT=6ff6ddc33f7db8b0e858c38b082dbc1fcc351071" >> $GITHUB_ENV
           cd ..
 
       - name: Add sunfish-kernel as remote and fetch
@@ -47,7 +44,7 @@ jobs:
           git checkout --orphan sunfish_kernel_pinned
           git rm -rf .
           git commit --allow-empty -m "Start sunfish_kernel_pinned branch"
-          git pull ./sunfish-kernel ${{ env.KERNEL_PINNED_COMMIT }} --allow-unrelated-histories
+          git pull ./sunfish-kernel 6ff6ddc33f7db8b0e858c38b082dbc1fcc351071 --allow-unrelated-histories
           git push "https://${{ github.actor }}:${{ secrets.PAT }}@github.com/${{ github.repository }}.git" sunfish_kernel_pinned
 
       - name: Create merge branch and merge Sunfish kernel
