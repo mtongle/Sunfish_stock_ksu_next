@@ -88,7 +88,6 @@ jobs:
           echo "Toolchain downloads and extraction complete."
           cd ..
 
-
       - name: Download and extract wahoo-kernel-tools
         run: |
           mkdir -p toolchains
@@ -141,7 +140,7 @@ jobs:
           DOT_PID=$!
 
           # Defconfig step
-          make -j$(nproc) \
+          make -j$(( $(nproc) < 3 ? 3 : $(nproc) )) \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
@@ -152,7 +151,7 @@ jobs:
             O=out
 
           # Build step
-          make -j2 \
+          make -j$(( $(nproc) < 3 ? 3 : $(nproc) )) \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
@@ -168,13 +167,17 @@ jobs:
 
           cd ..
 
+      - name: Compress kernel image as lz4
+        run: |
+          lz4 -9 out/arch/arm64/boot/Image out/arch/arm64/boot/Image.lz4
+
       - name: Clone AnyKernel3
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
 
-      - name: Copy kernel Image to AnyKernel3
+      - name: Copy lz4 Image to AnyKernel3
         run: |
-          cp kernel/out/arch/arm64/boot/Image AnyKernel3/
+          cp out/arch/arm64/boot/Image.lz4 AnyKernel3/
 
       # ---- Begin BOOT.IMG repack steps ----
 
@@ -191,10 +194,14 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen.git
 
+      - name: Move base_boot.img to Android-Image-Kitchen
+        run: |
+          mv base_boot.img Android-Image-Kitchen/
+
       - name: Unpack base boot.img
         run: |
           cd Android-Image-Kitchen
-          ./unpackimg.sh ../base_boot.img
+          ./unpackimg.sh base_boot.img
           cd ..
 
       - name: Replace kernel in unpacked image
