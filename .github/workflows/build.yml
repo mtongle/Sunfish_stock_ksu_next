@@ -121,16 +121,17 @@ jobs:
           fi
           cd kernel
           # Defconfig step
-          make O=${OUT_DIR} \
+          make -j$(nproc) \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
             CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
             LLVM=1 \
             LLVM_IAS=1 \
-            ${DEFCONFIG}
+            ${DEFCONFIG} \
+            O=out
           # Build step
-          make O=${OUT_DIR} \
+          make -j$(nproc) \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
@@ -139,9 +140,9 @@ jobs:
             LLVM_IAS=1 \
             LD=${LD} \
             NM=llvm-nm \
-            OBJCOPY=llvm-objcopy
+            OBJCOPY=llvm-objcopy \
+            O=out
           cd ..
-
 
       - name: Clone AnyKernel3
         run: |
