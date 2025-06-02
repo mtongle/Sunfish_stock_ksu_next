@@ -20,6 +20,7 @@ jobs:
         with:
           ref: sunfishkernel2023
           fetch-depth: 0
+          path: kernel
 
       - name: Install dependencies
         run: |
@@ -119,12 +120,9 @@ jobs:
           export CROSS_COMPILE="${KERNEL_DIR}/aarch64-linux-android-4.9/bin/aarch64-linux-gnu-"
           export CROSS_COMPILE_ARM32="${KERNEL_DIR}/arm-linux-androideabi-4.9/bin/arm-linux-gnueabi-"
           DEFCONFIG="sunfish_defconfig"
-          if [ ! -d kernel ]; then
-            git clone --depth=1 --branch android-msm-sunfish-4.14-android13-qpr3 https://android.googlesource.com/kernel/msm kernel
-          fi
           cd kernel
-          # Defconfig step
-          make O=${OUT_DIR} \
+          # Defconfig step (don't parallelize)
+          make O=../${OUT_DIR} \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
@@ -132,8 +130,8 @@ jobs:
             LLVM=1 \
             LLVM_IAS=1 \
             ${DEFCONFIG}
-          # Build step
-          make O=${OUT_DIR} \
+          # Build step (parallel, fastest)
+          make O=../${OUT_DIR} \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
@@ -142,7 +140,8 @@ jobs:
             LLVM_IAS=1 \
             LD=${LD} \
             NM=llvm-nm \
-            OBJCOPY=llvm-objcopy
+            OBJCOPY=llvm-objcopy \
+            -j"$(nproc)"
           cd ..
 
       - name: Clone AnyKernel3
