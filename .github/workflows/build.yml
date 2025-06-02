@@ -174,7 +174,7 @@ jobs:
 
       - name: Copy kernel Image to AnyKernel3
         run: |
-          cp out/arch/arm64/boot/Image AnyKernel3/
+          cp kernel/out/arch/arm64/boot/Image AnyKernel3/
 
       # ---- Begin BOOT.IMG repack steps ----
 
