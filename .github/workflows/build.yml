@@ -15,14 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout main repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Clone kernel source (sunfishkernel2023)
+      - name: Clone kernel source
         run: |
-          git clone --branch sunfishkernel2023 --depth=1 https://github.com/${{ github.repository }}.git kernel
+          git clone --depth=1 --branch sunfishkernel2023 https://github.com/kevin01523/Sunfish_stock_ksu_next kernel
 
       - name: Install dependencies
         run: |
@@ -90,7 +86,6 @@ jobs:
           tar -xzf arm-linux-androideabi-4.9.tar.gz -C arm-linux-androideabi-4.9
           echo "Toolchain downloads and extraction complete."
           cd ..
-
       - name: Fix binutils symlinks
         run: |
           # Symlink all the expected binutils for kernel cross-builds (aarch64-linux-gnu-* to aarch64-linux-android-*)
@@ -107,15 +102,12 @@ jobs:
               [ -e "arm-linux-gnueabi-$tool" ] || ln -s "arm-linux-androideabi-$tool" "arm-linux-gnueabi-$tool"
           done
           cd -
-
       - name: Build Kernel
         run: |
           set -e
           rm -rf out
-          echo "PATH for build: $PATH"
-          rm -rf kernel/out
-          cd kernel
-          pwd
+          export KERNEL_DIR="${PWD}/aosp-tools"
+          export OUT_DIR="${PWD}/out"
           export PATH="${KERNEL_DIR}/clang-r450784d/bin:${PATH}"
           export PATH="${KERNEL_DIR}/aarch64-linux-android-4.9/bin:${PATH}"
           export PATH="${KERNEL_DIR}/arm-linux-androideabi-4.9/bin:${PATH}"
@@ -124,9 +116,12 @@ jobs:
           export CROSS_COMPILE="${KERNEL_DIR}/aarch64-linux-android-4.9/bin/aarch64-linux-gnu-"
           export CROSS_COMPILE_ARM32="${KERNEL_DIR}/arm-linux-androideabi-4.9/bin/arm-linux-gnueabi-"
           DEFCONFIG="sunfish_defconfig"
+          if [ ! -d kernel ]; then
+            git clone --depth=1 --branch android-msm-sunfish-4.14-android13-qpr3 https://android.googlesource.com/kernel/msm kernel
+          fi
           cd kernel
-          # Defconfig step (don't parallelize)
-          make O=out \
+          # Defconfig step
+          make O=${OUT_DIR} \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
@@ -134,8 +129,8 @@ jobs:
             LLVM=1 \
             LLVM_IAS=1 \
             ${DEFCONFIG}
-          # Build step (parallel, fastest)
-          make O=out \
+          # Build step
+          make O=${OUT_DIR} \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
@@ -144,9 +139,9 @@ jobs:
             LLVM_IAS=1 \
             LD=${LD} \
             NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            -j"$(nproc)"
+            OBJCOPY=llvm-objcopy
           cd ..
+
 
       - name: Clone AnyKernel3
         run: |
