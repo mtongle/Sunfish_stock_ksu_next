@@ -152,7 +152,7 @@ jobs:
             O=out
 
           # Build step
-          make -j$(nproc) \
+          make -j2 \
             CC=clang \
             ARCH=arm64 \
             CROSS_COMPILE=${CROSS_COMPILE} \
