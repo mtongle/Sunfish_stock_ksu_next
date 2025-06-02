@@ -169,7 +169,7 @@ jobs:
 
       - name: Compress kernel image as lz4
         run: |
-          lz4 -9 out/arch/arm64/boot/Image out/arch/arm64/boot/Image.lz4
+          lz4 -9 kernel/out/arch/arm64/boot/Image out/arch/arm64/boot/Image.lz4
 
       - name: Clone AnyKernel3
         run: |
@@ -177,7 +177,7 @@ jobs:
 
       - name: Copy lz4 Image to AnyKernel3
         run: |
-          cp out/arch/arm64/boot/Image.lz4 AnyKernel3/
+          cp kernel/out/arch/arm64/boot/Image.lz4 AnyKernel3/
 
       # ---- Begin BOOT.IMG repack steps ----
 
@@ -202,11 +202,12 @@ jobs:
         run: |
           cd Android-Image-Kitchen
           ./unpackimg.sh base_boot.img
+          ls -la
           cd ..
 
       - name: Replace kernel in unpacked image
         run: |
-          cp out/arch/arm64/boot/Image Android-Image-Kitchen/split_img/boot.img-zImage
+          cp kernel/out/arch/arm64/boot/Image Android-Image-Kitchen/split_img/boot.img-zImage
 
       - name: Repack boot.img
         run: |
