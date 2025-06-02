@@ -88,6 +88,13 @@ jobs:
           echo "Toolchain downloads and extraction complete."
           cd ..
 
+
+      - name: Download and extract wahoo-kernel-tools
+        run: |
+          mkdir -p toolchains
+          wget -O /tmp/wahoo-kernel-tools.zip https://xdaforums.com/attachments/wahoo-kernel-tools-zip.4312566/
+          unzip /tmp/wahoo-kernel-tools.zip -d toolchains
+
       - name: Fix binutils symlinks
         run: |
           # Symlink all the expected binutils for kernel cross-builds (aarch64-linux-gnu-* to aarch64-linux-android-*)
@@ -110,7 +117,7 @@ jobs:
           set -e
           rm -rf out
           export KERNEL_DIR="${PWD}/aosp-tools"
-          export OUT_DIR="${PWD}/out"
+          export OUT_DIR="out"
           export PATH="${KERNEL_DIR}/clang-r450784d/bin:${PATH}"
           export PATH="${KERNEL_DIR}/aarch64-linux-android-4.9/bin:${PATH}"
           export PATH="${KERNEL_DIR}/arm-linux-androideabi-4.9/bin:${PATH}"
