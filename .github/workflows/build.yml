@@ -54,7 +54,8 @@ jobs:
             lftp \
             ftp \
             pigz \
-            device-tree-compiler
+            device-tree-compiler \
+            python3-pip
 
       - name: Add swap space
         run: |
@@ -86,6 +87,7 @@ jobs:
           tar -xzf arm-linux-androideabi-4.9.tar.gz -C arm-linux-androideabi-4.9
           echo "Toolchain downloads and extraction complete."
           cd ..
+
       - name: Fix binutils symlinks
         run: |
           # Symlink all the expected binutils for kernel cross-builds (aarch64-linux-gnu-* to aarch64-linux-android-*)
@@ -102,6 +104,7 @@ jobs:
               [ -e "arm-linux-gnueabi-$tool" ] || ln -s "arm-linux-androideabi-$tool" "arm-linux-gnueabi-$tool"
           done
           cd -
+
       - name: Build Kernel
         run: |
           set -e
@@ -152,6 +155,39 @@ jobs:
         run: |
           cp out/arch/arm64/boot/Image AnyKernel3/
 
+      # ---- Begin BOOT.IMG repack steps ----
+
+      - name: Install gdown for Google Drive downloads
+        run: |
+          pip3 install --upgrade pip
+          pip3 install gdown
+
+      - name: Download base boot.img
+        run: |
+          gdown --id 1vOnB4qd6_7g6szhldSy-UpU8quy1Yj8Z -O base_boot.img
+
+      - name: Clone Android Image Kitchen
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen.git
+
+      - name: Unpack base boot.img
+        run: |
+          cd Android-Image-Kitchen
+          ./unpackimg.sh ../base_boot.img
+          cd ..
+
+      - name: Replace kernel in unpacked image
+        run: |
+          cp out/arch/arm64/boot/Image Android-Image-Kitchen/split_img/boot.img-zImage
+
+      - name: Repack boot.img
+        run: |
+          cd Android-Image-Kitchen
+          ./repackimg.sh
+          cd ..
+
+      # ---- End BOOT.IMG repack steps ----
+
       - name: Set release variables
         id: vars
         run: |
@@ -176,6 +212,12 @@ jobs:
           name: AnyKernel3-flashable
           path: ${{ steps.vars.outputs.zip_name }}
 
+      - name: Upload repacked boot.img as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repacked-boot-img
+          path: Android-Image-Kitchen/image-new.img
+
       - name: Set up Git for pushing tags
         run: |
           git config --global user.name "${GITHUB_ACTOR}"
@@ -194,7 +236,9 @@ jobs:
           name: "Kernel Build ${{ steps.vars.outputs.tag }}"
           body: |
             Automated kernel build from branch `${{ steps.vars.outputs.branch_name }}` commit `${{ github.sha }}`.
-          files: ${{ steps.vars.outputs.zip_name }}
+          files: |
+            ${{ steps.vars.outputs.zip_name }}
+            Android-Image-Kitchen/image-new.img
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
