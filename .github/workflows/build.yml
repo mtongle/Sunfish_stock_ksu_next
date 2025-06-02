@@ -137,7 +137,7 @@ jobs:
             CROSS_COMPILE=${CROSS_COMPILE} \
             CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
             LLVM=1 \
-            LLVM_IAS=1 DTC_EXT=dtc \
+            LLVM_IAS=1 LD=${LD} DTC_EXT=dtc \
             ${DEFCONFIG} \
             O=out
           # Build step
