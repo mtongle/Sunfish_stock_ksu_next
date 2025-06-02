@@ -130,6 +130,16 @@ jobs:
             git clone --depth=1 --branch android-msm-sunfish-4.14-android13-qpr3 https://android.googlesource.com/kernel/msm kernel
           fi
           cd kernel
+
+          # Keepalive dot animation
+          (
+            while true; do
+              echo -n "."
+              sleep 30
+            done
+          ) &
+          DOT_PID=$!
+
           # Defconfig step
           make -j$(nproc) \
             CC=clang \
@@ -140,6 +150,7 @@ jobs:
             LLVM_IAS=1 LD=${LD} DTC_EXT=dtc \
             ${DEFCONFIG} \
             O=out
+
           # Build step
           make -j$(nproc) \
             CC=clang \
@@ -152,6 +163,9 @@ jobs:
             NM=llvm-nm \
             OBJCOPY=llvm-objcopy DTC_EXT=dtc \
             O=out
+
+          kill $DOT_PID
+
           cd ..
 
       - name: Clone AnyKernel3
