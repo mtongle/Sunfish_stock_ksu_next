@@ -193,8 +193,8 @@ jobs:
 
       - name: Download Android Boot Image Editor
         run: |
-          wget https://github.com/cfig/Android_boot_image_editor/releases/download/v15_r1/AndroidBootImgEditor-15_r1-linux-x86_64.zip
-          unzip AndroidBootImgEditor-15_r1-linux-x86_64.zip -d abie
+          wget https://github.com/cfig/Android_boot_image_editor/releases/download/v15_r1/boot_editor_v15_r1.zip
+          unzip boot_editor_v15_r1.zip -d abie
           chmod +x abie/tools/*
 
       - name: Unpack base boot.img with Android Boot Image Editor
