@@ -56,7 +56,14 @@ jobs:
             pigz \
             device-tree-compiler \
             python3-pip \
-            tree
+            tree \
+            openjdk-17-jdk \
+            gradle \
+            p7zip-full \
+            android-sdk-libsparse-utils \
+            erofs-utils \
+            xz-utils \
+            zlib1g-dev
 
       - name: Add swap space
         run: |
@@ -180,7 +187,7 @@ jobs:
         run: |
           cp kernel/out/arch/arm64/boot/Image.lz4 AnyKernel3/
 
-      # ---- Begin BOOT.IMG repack steps using cfig/Android_boot_image_editor ----
+      # ---- Begin BOOT.IMG repack steps using gradle ----
 
       - name: Install Python dependencies for boot image editor
         run: |
@@ -189,32 +196,34 @@ jobs:
 
       - name: Download base boot.img
         run: |
-          gdown --id 1vOnB4qd6_7g6szhldSy-UpU8quy1Yj8Z -O base_boot.img
+          gdown --id 1vOnB4qd6_7g6szhldSy-UpU8quy1Yj8Z -O boot.img
 
-      - name: Download Android Boot Image Editor
+      - name: Ensure gradlew is executable
         run: |
-          wget https://github.com/cfig/Android_boot_image_editor/releases/download/v15_r1/boot_editor_v15_r1.zip
-          mkdir -p abie/tools
-          unzip boot_editor_v15_r1.zip -d abie/tools
-          chmod +x abie/tools/*
+          chmod +x gradlew
 
-      - name: Unpack base boot.img with Android Boot Image Editor
+      - name: Unpack boot.img with gradle
         run: |
-          abie/tools/unpack_bootimg.py --boot_img base_boot.img --out abie/unpacked
+          ./gradlew unpack
 
-      - name: List contents of abie/unpacked
+      - name: List contents of build/unzip_boot
         run: |
-          ls -lh abie/unpacked
-          echo "----"
-          tree abie/unpacked || true
+          ls -lh build/unzip_boot
+          tree build/unzip_boot || true
 
       - name: Replace kernel in unpacked image
         run: |
-          cp kernel/out/arch/arm64/boot/Image abie/unpacked/kernel
+          cp kernel/out/arch/arm64/boot/Image build/unzip_boot/kernel
 
-      - name: Repack boot.img with Android Boot Image Editor
+      - name: Pack boot.img with gradle
         run: |
-          abie/tools/repack_bootimg.py --out abie/ --unpack abie/unpacked
+          ./gradlew pack
+
+      - name: Upload repacked boot.img
+        uses: actions/upload-artifact@v4
+        with:
+          name: repacked-boot-img
+          path: boot.img.signed
 
       # ---- End BOOT.IMG repack steps ----
 
@@ -242,11 +251,11 @@ jobs:
           name: AnyKernel3-flashable
           path: ${{ steps.vars.outputs.zip_name }}
 
-      - name: Upload repacked boot.img as artifact
+      - name: Upload kernel Image as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: repacked-boot-img
-          path: abie/boot.img
+          name: kernel-image
+          path: out/arch/arm64/boot/Image
 
       - name: Set up Git for pushing tags
         run: |
@@ -268,12 +277,6 @@ jobs:
             Automated kernel build from branch `${{ steps.vars.outputs.branch_name }}` commit `${{ github.sha }}`.
           files: |
             ${{ steps.vars.outputs.zip_name }}
-            abie/boot.img
+            boot.img.signed
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
-
-      - name: Upload kernel Image as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: kernel-image
-          path: out/arch/arm64/boot/Image
