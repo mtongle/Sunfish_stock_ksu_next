@@ -169,7 +169,7 @@ jobs:
 
       - name: Compress kernel image as lz4
         run: |
-          lz4 -9 kernel/out/arch/arm64/boot/Image out/arch/arm64/boot/Image.lz4
+          lz4 -9 kernel/out/arch/arm64/boot/Image kernel/out/arch/arm64/boot/Image.lz4
 
       - name: Clone AnyKernel3
         run: |
