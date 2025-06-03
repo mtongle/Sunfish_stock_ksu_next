@@ -55,7 +55,8 @@ jobs:
             ftp \
             pigz \
             device-tree-compiler \
-            python3-pip
+            python3-pip \
+            tree
 
       - name: Add swap space
         run: |
@@ -179,41 +180,40 @@ jobs:
         run: |
           cp kernel/out/arch/arm64/boot/Image.lz4 AnyKernel3/
 
-      # ---- Begin BOOT.IMG repack steps ----
+      # ---- Begin BOOT.IMG repack steps using cfig/Android_boot_image_editor ----
 
-      - name: Install gdown for Google Drive downloads
+      - name: Install Python dependencies for boot image editor
         run: |
           pip3 install --upgrade pip
-          pip3 install gdown
+          pip3 install gdown pycryptodome
 
       - name: Download base boot.img
         run: |
           gdown --id 1vOnB4qd6_7g6szhldSy-UpU8quy1Yj8Z -O base_boot.img
 
-      - name: Clone Android Image Kitchen
+      - name: Download Android Boot Image Editor
         run: |
-          git clone --depth=1 https://github.com/osm0sis/Android-Image-Kitchen.git
+          wget https://github.com/cfig/Android_boot_image_editor/releases/download/v15_r1/AndroidBootImgEditor-15_r1-linux-x86_64.zip
+          unzip AndroidBootImgEditor-15_r1-linux-x86_64.zip -d abie
+          chmod +x abie/tools/*
 
-      - name: Move base_boot.img to Android-Image-Kitchen
+      - name: Unpack base boot.img with Android Boot Image Editor
         run: |
-          mv base_boot.img Android-Image-Kitchen/
+          abie/tools/unpack_bootimg.py --boot_img base_boot.img --out abie/unpacked
 
-      - name: Unpack base boot.img
+      - name: List contents of abie/unpacked
         run: |
-          cd Android-Image-Kitchen
-          ./unpackimg.sh base_boot.img
-          ls -la
-          cd ..
+          ls -lh abie/unpacked
+          echo "----"
+          tree abie/unpacked || true
 
       - name: Replace kernel in unpacked image
         run: |
-          cp kernel/out/arch/arm64/boot/Image Android-Image-Kitchen/split_img/boot.img-zImage
+          cp kernel/out/arch/arm64/boot/Image abie/unpacked/kernel
 
-      - name: Repack boot.img
+      - name: Repack boot.img with Android Boot Image Editor
         run: |
-          cd Android-Image-Kitchen
-          ./repackimg.sh
-          cd ..
+          abie/tools/repack_bootimg.py --out abie/ --unpack abie/unpacked
 
       # ---- End BOOT.IMG repack steps ----
 
@@ -245,7 +245,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: repacked-boot-img
-          path: Android-Image-Kitchen/image-new.img
+          path: abie/boot.img
 
       - name: Set up Git for pushing tags
         run: |
@@ -267,7 +267,7 @@ jobs:
             Automated kernel build from branch `${{ steps.vars.outputs.branch_name }}` commit `${{ github.sha }}`.
           files: |
             ${{ steps.vars.outputs.zip_name }}
-            Android-Image-Kitchen/image-new.img
+            abie/boot.img
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
