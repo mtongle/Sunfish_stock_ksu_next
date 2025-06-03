@@ -1,0 +1,247 @@
+name: Android Kernel Build (AOSP Tools, Official Clang, Sunfish)
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            bc \
+            bison \
+            curl \
+            ca-certificates \
+            cpio \
+            flex \
+            git \
+            lz4 \
+            libarchive-tools \
+            libelf-dev \
+            libssl-dev \
+            libtfm-dev \
+            libfl-dev \
+            libncurses-dev \
+            libncurses6 \
+            libncursesw6 \
+            python3 \
+            python3-venv \
+            rsync \
+            unzip \
+            wget \
+            zip \
+            zstd \
+            gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabi \
+            binutils-arm-linux-gnueabihf \
+            lftp \
+            ftp \
+            pigz \
+            device-tree-compiler \
+            python3-pip \
+            tree \
+            openjdk-17-jdk \
+            gradle \
+            p7zip-full \
+            android-sdk-libsparse-utils \
+            erofs-utils \
+            xz-utils \
+            zlib1g-dev
+
+      - name: Add swap space
+        run: |
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Download AOSP toolchains (Android 13)
+        run: |
+          set -e
+          mkdir -p aosp-tools
+          cd aosp-tools
+          wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android13-qpr3-s9-release/clang-r450784d.tar.gz
+          mkdir clang-r450784d
+          tar -xzf clang-r450784d.tar.gz -C clang-r450784d
+          wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/606f80986096476912e04e5c2913685a8f2c3b65.tar.gz -O aarch64-linux-android-4.9.tar.gz
+          mkdir aarch64-linux-android-4.9
+          tar -xzf aarch64-linux-android-4.9.tar.gz -C aarch64-linux-android-4.9
+          wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/b0c6a654327ca8796bed1e61dffcf523d04dceaa.tar.gz -O arm-linux-androideabi-4.9.tar.gz
+          mkdir arm-linux-androideabi-4.9
+          tar -xzf arm-linux-androideabi-4.9.tar.gz -C arm-linux-androideabi-4.9
+          cd ..
+
+      - name: Download and extract wahoo-kernel-tools
+        run: |
+          mkdir -p toolchains
+          wget -O /tmp/wahoo-kernel-tools.zip https://xdaforums.com/attachments/wahoo-kernel-tools-zip.4312566/
+          unzip /tmp/wahoo-kernel-tools.zip -d toolchains
+
+      - name: Fix binutils symlinks
+        run: |
+          AARCH64_BIN="${PWD}/aosp-tools/aarch64-linux-android-4.9/bin"
+          cd "$AARCH64_BIN"
+          for tool in ar nm objcopy objdump ranlib strip readelf; do
+              [ -e "aarch64-linux-gnu-$tool" ] || ln -s "aarch64-linux-android-$tool" "aarch64-linux-gnu-$tool"
+          done
+          cd -
+          ARM32_BIN="${PWD}/aosp-tools/arm-linux-androideabi-4.9/bin"
+          cd "$ARM32_BIN"
+          for tool in ar nm objcopy objdump ranlib strip readelf; do
+              [ -e "arm-linux-gnueabi-$tool" ] || ln -s "arm-linux-androideabi-$tool" "arm-linux-gnueabi-$tool"
+          done
+          cd -
+
+      - name: Build Kernel
+        run: |
+          set -e
+          rm -rf out
+          export KERNEL_DIR="${PWD}/aosp-tools"
+          export OUT_DIR="out"
+          export PATH="${KERNEL_DIR}/clang-r450784d/bin:$(pwd)/toolchains/wahoo-kernel-tools/bin:${PATH}"
+          export PATH="${KERNEL_DIR}/aarch64-linux-android-4.9/bin:${PATH}"
+          export PATH="${KERNEL_DIR}/arm-linux-androideabi-4.9/bin:${PATH}"
+          export LD_LIBRARY_PATH="${KERNEL_DIR}/clang-r450784d/lib64:${LD_LIBRARY_PATH}"
+          export LD=ld.lld
+          export CROSS_COMPILE="${KERNEL_DIR}/aarch64-linux-android-4.9/bin/aarch64-linux-gnu-"
+          export CROSS_COMPILE_ARM32="${KERNEL_DIR}/arm-linux-androideabi-4.9/bin/arm-linux-gnueabi-"
+          DEFCONFIG="sunfish_defconfig"
+          if [ ! -d kernel ]; then
+            git clone --depth=1 --branch android-msm-sunfish-4.14-android13-qpr3 https://android.googlesource.com/kernel/msm kernel
+          fi
+          cd kernel
+          (while true; do echo -n "."; sleep 30; done) &
+          DOT_PID=$!
+          make -j$(nproc) CC=clang ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} LLVM=1 LLVM_IAS=1 LD=${LD} DTC_EXT=dtc ${DEFCONFIG} O=out
+          make -j$(nproc) CC=clang ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} LLVM=1 LLVM_IAS=1 LD=${LD} NM=llvm-nm OBJCOPY=llvm-objcopy DTC_EXT=dtc O=out
+          kill $DOT_PID
+          cd ..
+
+      - name: Compress kernel image as lz4
+        run: |
+          lz4 -9 -f kernel/out/arch/arm64/boot/Image kernel/out/arch/arm64/boot/Image.lz4
+
+      - name: Clone AnyKernel3
+        run: git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
+
+      - name: Copy lz4 Image to AnyKernel3
+        run: cp kernel/out/arch/arm64/boot/Image.lz4 AnyKernel3/
+
+      # ---- BOOT.IMG repack steps using gradle ----
+
+      - name: Install Python dependencies for boot image editor
+        run: |
+          pip3 install --upgrade pip
+          pip3 install gdown pycryptodome
+
+      - name: Download base boot.img
+        run: |
+          gdown --id 1vOnB4qd6_7g6szhldSy-UpU8quy1Yj8Z -O base_boot.img
+
+      - name: Download Android Boot Image Editor Release
+        run: |
+          wget https://github.com/cfig/Android_boot_image_editor/releases/download/v15_r1/boot_editor_v15_r1.zip
+          mkdir -p abie
+          unzip boot_editor_v15_r1.zip -d abie
+          chmod +x abie/boot_editor_v15_r1/gradlew
+
+      - name: Copy boot.img into Boot Image Editor directory
+        run: cp base_boot.img abie/boot_editor_v15_r1/boot.img
+
+      - name: Unpack boot.img with gradle
+        run: |
+          cd abie/boot_editor_v15_r1
+          ./gradlew unpack
+
+      - name: List contents of build/unzip_boot
+        run: |
+          ls -lh abie/boot_editor_v15_r1/build/unzip_boot
+          tree abie/boot_editor_v15_r1/build/unzip_boot || true
+        continue-on-error: true
+
+      - name: Replace kernel in unpacked image
+        run: |
+          cp kernel/out/arch/arm64/boot/Image abie/boot_editor_v15_r1/build/unzip_boot/kernel
+
+      - name: Pack boot.img with gradle
+        run: |
+          cd abie/boot_editor_v15_r1
+          ./gradlew pack
+
+      - name: Upload repacked boot.img
+        uses: actions/upload-artifact@v4
+        with:
+          name: repacked-boot-img
+          path: abie/boot_editor_v15_r1/boot.img.signed
+
+      # ---- End BOOT.IMG repack steps ----
+
+      - name: Set release variables
+        id: vars
+        run: |
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF##*/}}"
+          SHORT_SHA=$(git rev-parse --short=5 HEAD)
+          DATE=$(date +%Y%m%d)
+          TAG="${DATE}-${SHORT_SHA}"
+          ZIP_NAME="${BRANCH_NAME}-${SHORT_SHA}.zip"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create AnyKernel3 flashable zip
+        run: |
+          cd AnyKernel3
+          zip -r9 ../${{ steps.vars.outputs.zip_name }} ./*
+          cd ..
+
+      - name: Upload AnyKernel3 flashable zip as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnyKernel3-flashable
+          path: ${{ steps.vars.outputs.zip_name }}
+
+      - name: Upload kernel Image as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-image
+          path: out/arch/arm64/boot/Image
+
+      - name: Set up Git for pushing tags
+        run: |
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/${{ github.repository }}.git
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.vars.outputs.tag }}
+          git push origin ${{ steps.vars.outputs.tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "Kernel Build ${{ steps.vars.outputs.tag }}"
+          body: |
+            Automated kernel build from branch `${{ steps.vars.outputs.branch_name }}` commit `${{ github.sha }}`.
+          files: |
+            ${{ steps.vars.outputs.zip_name }}
+            abie/boot_editor_v15_r1/boot.img.signed
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
