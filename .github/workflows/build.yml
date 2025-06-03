@@ -15,10 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Clone kernel source
-        run: |
-          git clone --depth=1 --branch sunfishkernel2023 https://github.com/kevin01523/Sunfish_stock_ksu_next kernel
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -78,22 +76,15 @@ jobs:
           set -e
           mkdir -p aosp-tools
           cd aosp-tools
-          echo "Downloading official Android 13 clang (r450784d, android13-qpr3-s9-release)..."
           wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android13-qpr3-s9-release/clang-r450784d.tar.gz
-          echo "Extracting clang..."
           mkdir clang-r450784d
           tar -xzf clang-r450784d.tar.gz -C clang-r450784d
-          echo "Downloading AOSP GCC 4.9 for aarch64 (commit 606f80986096476912e04e5c2913685a8f2c3b65)..."
           wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/606f80986096476912e04e5c2913685a8f2c3b65.tar.gz -O aarch64-linux-android-4.9.tar.gz
-          echo "Extracting aarch64 GCC..."
           mkdir aarch64-linux-android-4.9
           tar -xzf aarch64-linux-android-4.9.tar.gz -C aarch64-linux-android-4.9
-          echo "Downloading AOSP GCC 4.9 for arm (commit b0c6a654327ca8796bed1e61dffcf523d04dceaa)..."
           wget -q https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/b0c6a654327ca8796bed1e61dffcf523d04dceaa.tar.gz -O arm-linux-androideabi-4.9.tar.gz
-          echo "Extracting arm GCC..."
           mkdir arm-linux-androideabi-4.9
           tar -xzf arm-linux-androideabi-4.9.tar.gz -C arm-linux-androideabi-4.9
-          echo "Toolchain downloads and extraction complete."
           cd ..
 
       - name: Download and extract wahoo-kernel-tools
@@ -104,14 +95,12 @@ jobs:
 
       - name: Fix binutils symlinks
         run: |
-          # Symlink all the expected binutils for kernel cross-builds (aarch64-linux-gnu-* to aarch64-linux-android-*)
           AARCH64_BIN="${PWD}/aosp-tools/aarch64-linux-android-4.9/bin"
           cd "$AARCH64_BIN"
           for tool in ar nm objcopy objdump ranlib strip readelf; do
               [ -e "aarch64-linux-gnu-$tool" ] || ln -s "aarch64-linux-android-$tool" "aarch64-linux-gnu-$tool"
           done
           cd -
-          # Also symlink arm-linux-gnueabi-* to arm-linux-androideabi-* for 32-bit tools
           ARM32_BIN="${PWD}/aosp-tools/arm-linux-androideabi-4.9/bin"
           cd "$ARM32_BIN"
           for tool in ar nm objcopy objdump ranlib strip readelf; do
@@ -137,42 +126,11 @@ jobs:
             git clone --depth=1 --branch android-msm-sunfish-4.14-android13-qpr3 https://android.googlesource.com/kernel/msm kernel
           fi
           cd kernel
-
-          # Keepalive dot animation
-          (
-            while true; do
-              echo -n "."
-              sleep 30
-            done
-          ) &
+          (while true; do echo -n "."; sleep 30; done) &
           DOT_PID=$!
-
-          # Defconfig step
-          make -j$(( $(nproc) < 3 ? 3 : $(nproc) )) \
-            CC=clang \
-            ARCH=arm64 \
-            CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
-            LLVM=1 \
-            LLVM_IAS=1 LD=${LD} DTC_EXT=dtc \
-            ${DEFCONFIG} \
-            O=out
-
-          # Build step
-          make -j$(( $(nproc) < 3 ? 3 : $(nproc) )) \
-            CC=clang \
-            ARCH=arm64 \
-            CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            LD=${LD} \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy DTC_EXT=dtc \
-            O=out
-
+          make -j$(nproc) CC=clang ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} LLVM=1 LLVM_IAS=1 LD=${LD} DTC_EXT=dtc ${DEFCONFIG} O=out
+          make -j$(nproc) CC=clang ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} LLVM=1 LLVM_IAS=1 LD=${LD} NM=llvm-nm OBJCOPY=llvm-objcopy DTC_EXT=dtc O=out
           kill $DOT_PID
-
           cd ..
 
       - name: Compress kernel image as lz4
@@ -180,14 +138,12 @@ jobs:
           lz4 -9 -f kernel/out/arch/arm64/boot/Image kernel/out/arch/arm64/boot/Image.lz4
 
       - name: Clone AnyKernel3
-        run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
+        run: git clone --depth=1 https://github.com/osm0sis/AnyKernel3.git
 
       - name: Copy lz4 Image to AnyKernel3
-        run: |
-          cp kernel/out/arch/arm64/boot/Image.lz4 AnyKernel3/
+        run: cp kernel/out/arch/arm64/boot/Image.lz4 AnyKernel3/
 
-      # ---- Begin BOOT.IMG repack steps using gradle ----
+      # ---- BOOT.IMG repack steps using gradle ----
 
       - name: Install Python dependencies for boot image editor
         run: |
@@ -206,8 +162,7 @@ jobs:
           chmod +x abie/boot_editor_v15_r1/gradlew
 
       - name: Copy boot.img into Boot Image Editor directory
-        run: |
-          cp base_boot.img abie/boot_editor_v15_r1/boot.img
+        run: cp base_boot.img abie/boot_editor_v15_r1/boot.img
 
       - name: Unpack boot.img with gradle
         run: |
