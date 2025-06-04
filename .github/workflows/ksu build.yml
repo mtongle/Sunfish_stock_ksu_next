@@ -22,46 +22,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            bc \
-            bison \
-            curl \
-            ca-certificates \
-            cpio \
-            flex \
-            git \
-            lz4 \
-            libarchive-tools \
-            libelf-dev \
-            libssl-dev \
-            libtfm-dev \
-            libfl-dev \
-            libncurses-dev \
-            libncurses6 \
-            libncursesw6 \
-            python3 \
-            python3-venv \
-            rsync \
-            unzip \
-            wget \
-            zip \
-            zstd \
-            gcc-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabi \
-            binutils-arm-linux-gnueabihf \
-            lftp \
-            ftp \
-            pigz \
-            device-tree-compiler \
-            python3-pip \
-            tree \
-            openjdk-17-jdk \
-            gradle \
-            p7zip-full \
-            android-sdk-libsparse-utils \
-            erofs-utils \
-            xz-utils \
-            zlib1g-dev
+            build-essential bc bison curl ca-certificates cpio flex git lz4 libarchive-tools libelf-dev \
+            libssl-dev libtfm-dev libfl-dev libncurses-dev libncurses6 libncursesw6 python3 python3-venv \
+            rsync unzip wget zip zstd gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-arm-linux-gnueabihf \
+            lftp ftp pigz device-tree-compiler python3-pip tree openjdk-17-jdk gradle p7zip-full \
+            android-sdk-libsparse-utils erofs-utils xz-utils zlib1g-dev
 
       - name: Add swap space
         run: |
@@ -114,7 +79,7 @@ jobs:
           rm -rf out
           export KERNEL_DIR="${PWD}/aosp-tools"
           export KBUILD_BUILD_USER="sette"
-	  export KBUILD_BUILD_HOST="google"
+          export KBUILD_BUILD_HOST="google"
           export KBUILD_COMPILER_STRING=$(${KERNEL_DIR}/clang-r450784d/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
           export OUT_DIR="out"
           export PATH="${KERNEL_DIR}/clang-r450784d/bin:$(pwd)/toolchains/wahoo-kernel-tools/bin:${PATH}"
