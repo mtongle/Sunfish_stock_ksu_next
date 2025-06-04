@@ -26,7 +26,7 @@ jobs:
             libssl-dev libtfm-dev libfl-dev libncurses-dev libncurses6 libncursesw6 python3 python3-venv \
             rsync unzip wget zip zstd gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-arm-linux-gnueabihf \
             lftp ftp pigz device-tree-compiler python3-pip tree openjdk-17-jdk gradle p7zip-full \
-            android-sdk-libsparse-utils erofs-utils xz-utils zlib1g-dev
+            android-sdk-libsparse-utils erofs-utils xz-utils zlib1g-dev perl
 
       - name: Add swap space
         run: |
@@ -75,7 +75,7 @@ jobs:
 
       - name: Clone kernel source
         run: |
-          git clone --depth=1 --branch blu_spark_ksu_next_susfs-13 https://github.com/kevin01523/pxl4a kernel
+          git clone --depth=1 --recurse-submodules --branch blu_spark_ksu_next_susfs-13 https://github.com/kevin01523/pxl4a kernel
 
       - name: Build Kernel
         run: |
