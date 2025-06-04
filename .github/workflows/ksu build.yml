@@ -1,4 +1,4 @@
-name: Android Kernel Build (AOSP Tools, Official Clang, Sunfish)
+name: Android Kernel Build (AOSP Tools, Official Clang, blu_spark)
 
 permissions:
   contents: write
@@ -73,6 +73,10 @@ jobs:
           done
           cd -
 
+      - name: Clone kernel source
+        run: |
+          git clone --depth=1 --branch blu_spark_ksu_next_susfs-13 https://github.com/kevin01523/pxl4a kernel
+
       - name: Build Kernel
         run: |
           set -e
@@ -89,10 +93,7 @@ jobs:
           export LD=ld.lld
           export CROSS_COMPILE="${KERNEL_DIR}/aarch64-linux-android-4.9/bin/aarch64-linux-gnu-"
           export CROSS_COMPILE_ARM32="${KERNEL_DIR}/arm-linux-androideabi-4.9/bin/arm-linux-gnueabi-"
-          DEFCONFIG="sunfish_defconfig"
-          if [ ! -d kernel ]; then
-            git clone --depth=1 --branch android-msm-sunfish-4.14-android13-qpr3 https://android.googlesource.com/kernel/msm kernel
-          fi
+          DEFCONFIG="blu_spark_defconfig"
           cd kernel
           (while true; do echo -n "."; sleep 30; done) &
           DOT_PID=$!
