@@ -180,10 +180,10 @@ jobs:
           zip -r9 ../${{ steps.vars.outputs.zip_name }} ./*
           cd ..
 
-      - name: Upload AnyKernel3 flashable zip as artifact
+      - name: Upload flashable zip as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3-flashable
+          name: flashable-zip
           path: ${{ steps.vars.outputs.zip_name }}
 
       - name: Upload kernel Image as artifact
@@ -191,6 +191,12 @@ jobs:
         with:
           name: kernel-image
           path: out/arch/arm64/boot/Image
+
+      - name: Upload Image.lz4 as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-lz4
+          path: kernel/out/arch/arm64/boot/Image.lz4
 
       - name: Set up Git for pushing tags
         run: |
@@ -211,6 +217,8 @@ jobs:
           body: |
             Automated kernel build from branch `${{ steps.vars.outputs.branch_name }}` commit `${{ github.sha }}`.
           files: |
+            out/arch/arm64/boot/Image
+            kernel/out/arch/arm64/boot/Image.lz4
             ${{ steps.vars.outputs.zip_name }}
             abie/boot_editor_v15_r1/boot.img.signed
         env:
